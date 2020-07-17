@@ -101,13 +101,13 @@ function getFeedsOfUser(userArray, responseObj) {
   })
 }
 
-router.get('/getFeeds/:username', (req, res) => {
-  try {
-    getFeedsOfUser([req.params.username], res)
-  } catch (error) {
-    console.log(error.message) 
-  }
-})
+// router.get('/getFeeds/:username', (req, res) => {
+//   try {
+//     getFeedsOfUser([req.params.username], res)
+//   } catch (error) {
+//     console.log(error.message) 
+//   }
+// })
 
 router.get('/getAllPeople', (req, res) => {
   try {
