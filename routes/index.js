@@ -79,20 +79,33 @@ router.get('/getUser/:u_name', (req, res) => {
   }
 })
 
+function getFeedsOfUser(userArray, responseObj) {
+  const collection = db.collection(collname)
+
+  collection.find({
+    username: {
+      $in: userArray
+    }
+  },
+  {
+    projection: {
+      posts: 1
+    }
+  })
+  .toArray((err, feeds) => {
+    if (!err) {
+      console.log('Posts Sent: ', feeds[0])
+      
+      responseObj.send(feeds)
+    }
+  })
+}
+
 router.get('/getFeeds/:username', (req, res) => {
   try {
-    const collection = db.collection(collname)
-
-    collection.find({
-      username: req.params.username
-    }).toArray(function (err, user) {
-      if (!err) {
-        console.log('Posts Sent: ', user[0])
-        res.send(user[0].posts)
-      }
-    })
+    getFeedsOfUser([req.params.username], res)
   } catch (error) {
-   console.log(error.message) 
+    console.log(error.message) 
   }
 })
 
@@ -109,6 +122,33 @@ router.get('/getAllPeople', (req, res) => {
           res.send(people)
         }
       })
+  } catch (error) {
+    console.log(error.message)
+  }
+})
+
+router.get('/getFeedsOfFriends/:username', function (req, res) {
+  try {
+    const collection = db.collection(collname)
+
+    collection.find({
+      username: req.params.username
+    },
+    {
+      projection: {friends: 1}
+    }).toArray(function (err, friends) {
+      if (!err) {
+        // console.log(friends)
+        // res.send(friends[0].friends)
+        var usernames = []
+        for (let friendObj of friends[0].friends) {
+          console.log(friendObj.friend.username)
+          usernames.push(friendObj.friend.username)
+        }
+
+        getFeedsOfUser(usernames, res)
+      }
+    })
   } catch (error) {
     console.log(error.message)
   }
