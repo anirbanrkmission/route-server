@@ -222,6 +222,126 @@ router.patch('/addFriend/:u_name', function (req, res) {
   }
 })
 
+router.patch('/sendRequest', (req, res) => {
+  try {
+    const collection = db.collection(collname)
+
+    console.log(req.body)
+    //Sender update
+    collection.updateOne({
+      username: req.body.request.requestBy.username
+    },{
+      $push: {
+        requests: req.body
+      }
+    })
+
+    //Receiver update
+    collection.updateOne({
+      username: req.body.request.requestTo.username
+    },{
+      $push: {
+        requests: req.body
+      }
+    })
+
+    res.send('Request sent')
+  } catch (error) {
+    console.log(error.message)
+  }
+})
+
+router.patch('/acceptRequest', (req, res) => {
+  try {
+    const collection = db.collection(collname)
+
+    //Request sender update
+    collection.updateOne({
+      username: req.body.request.requestBy.username
+    },
+    {
+      $set: {
+        'requests.$[reqElem].request.requestTo.accepted': true
+      }
+    },
+    {
+      arrayFilters: [{
+        'reqElem.request.requestBy.username': req.body.request.requestBy.username
+      }]
+    })
+
+    //Request receiver update
+    collection.updateOne({
+      username: req.body.request.requestTo.username
+    },
+    {
+      $set: {
+        'requests.$[reqElem].request.requestTo.accepted': true
+      }
+    },
+    {
+      arrayFilters: [{
+        'reqElem.request.requestTo.username': req.body.request.requestTo.username
+      }]
+    })
+
+    res.send('Accepted')
+  } catch (error) {
+    console.log(error.message)
+  }
+})
+
+router.patch('/removeRequest', (req, res) => {
+  try {
+    const collection = db.collection(collname)
+    console.log(req.body)
+
+    //Request sender update
+    collection.updateOne({
+      username: req.body.request.requestBy.username
+    },
+    {
+      $pull: {
+        requests: {
+          'request.requestTo.username': req.body.request.requestTo.username
+        }
+      }
+    })
+
+    //Request receiver update
+    collection.updateOne({
+      username: req.body.request.requestTo.username
+    },
+    {
+      $pull: {
+        requests: {
+          'request.requestBy.username': req.body.request.requestBy.username
+        }
+      }
+    })
+
+    res.send('Removed')
+  } catch (error) {
+    console.log(error.message)
+  }
+})
+
+router.get('/getReq/:u_name', (req,res) => {
+  const collection = db.collection(collname);
+
+  collection.find({
+    username: req.params.u_name
+  }, {
+    projection: {
+      requests: 1
+    }
+  }).toArray((err, requestsArr) => {
+    if (!err) {
+      res.send(requestsArr)
+    }
+  })
+})
+
 router.delete('/delete', function (req, res) {
   try {
     const collection = db.collection(collname);
