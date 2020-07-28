@@ -79,20 +79,33 @@ router.get('/getUser/:u_name', (req, res) => {
   }
 })
 
+function getFeedsOfUser(userArray, responseObj) {
+  const collection = db.collection(collname)
+
+  collection.find({
+    username: {
+      $in: userArray
+    }
+  },
+  {
+    projection: {
+      posts: 1
+    }
+  })
+  .toArray((err, feeds) => {
+    if (!err) {
+      console.log('Posts Sent: ', feeds[0])
+      
+      responseObj.send(feeds)
+    }
+  })
+}
+
 router.get('/getFeeds/:username', (req, res) => {
   try {
-    const collection = db.collection(collname)
-
-    collection.find({
-      username: req.params.username
-    }).toArray(function (err, user) {
-      if (!err) {
-        console.log('Posts Sent: ', user[0])
-        res.send(user[0].posts)
-      }
-    })
+    getFeedsOfUser([req.params.username], res)
   } catch (error) {
-   console.log(error.message) 
+    console.log(error.message) 
   }
 })
 
@@ -109,6 +122,41 @@ router.get('/getAllPeople', (req, res) => {
           res.send(people)
         }
       })
+  } catch (error) {
+    console.log(error.message)
+  }
+})
+
+router.get('/getFeedsOfFriends/:username', function (req, res) {
+  try {
+    const collection = db.collection(collname)
+
+    collection.find({
+      username: req.params.username
+    },
+    {
+      projection: {requests: 1}
+    }).toArray(function (err, requestsList) {
+      if (!err) {
+        // res.send(requestsList)
+        // res.send(friends[0].friends)
+
+        var usernames = []
+        for (let reqObj of requestsList[0].requests) {
+          if (reqObj.request.requestTo.accepted) {
+            if (reqObj.request.requestTo.username == req.params.username) {
+              usernames.push(reqObj.request.requestBy.username)
+            }
+            else if (reqObj.request.requestBy.username == req.params.username) {
+              usernames.push(reqObj.request.requestTo.username)
+            }
+          }
+          
+        }
+
+        getFeedsOfUser(usernames, res)
+      }
+    })
   } catch (error) {
     console.log(error.message)
   }
@@ -180,6 +228,126 @@ router.patch('/addFriend/:u_name', function (req, res) {
   } catch (error) {
     console.log(error.message)
   }
+})
+
+router.patch('/sendRequest', (req, res) => {
+  try {
+    const collection = db.collection(collname)
+
+    console.log(req.body)
+    //Sender update
+    collection.updateOne({
+      username: req.body.request.requestBy.username
+    },{
+      $push: {
+        requests: req.body
+      }
+    })
+
+    //Receiver update
+    collection.updateOne({
+      username: req.body.request.requestTo.username
+    },{
+      $push: {
+        requests: req.body
+      }
+    })
+
+    res.send('Request sent')
+  } catch (error) {
+    console.log(error.message)
+  }
+})
+
+router.patch('/acceptRequest', (req, res) => {
+  try {
+    const collection = db.collection(collname)
+
+    //Request sender update
+    collection.updateOne({
+      username: req.body.request.requestBy.username
+    },
+    {
+      $set: {
+        'requests.$[reqElem].request.requestTo.accepted': true
+      }
+    },
+    {
+      arrayFilters: [{
+        'reqElem.request.requestBy.username': req.body.request.requestBy.username
+      }]
+    })
+
+    //Request receiver update
+    collection.updateOne({
+      username: req.body.request.requestTo.username
+    },
+    {
+      $set: {
+        'requests.$[reqElem].request.requestTo.accepted': true
+      }
+    },
+    {
+      arrayFilters: [{
+        'reqElem.request.requestTo.username': req.body.request.requestTo.username
+      }]
+    })
+
+    res.send('Accepted')
+  } catch (error) {
+    console.log(error.message)
+  }
+})
+
+router.patch('/removeRequest', (req, res) => {
+  try {
+    const collection = db.collection(collname)
+    console.log(req.body)
+
+    //Request sender update
+    collection.updateOne({
+      username: req.body.request.requestBy.username
+    },
+    {
+      $pull: {
+        requests: {
+          'request.requestTo.username': req.body.request.requestTo.username
+        }
+      }
+    })
+
+    //Request receiver update
+    collection.updateOne({
+      username: req.body.request.requestTo.username
+    },
+    {
+      $pull: {
+        requests: {
+          'request.requestBy.username': req.body.request.requestBy.username
+        }
+      }
+    })
+
+    res.send('Removed')
+  } catch (error) {
+    console.log(error.message)
+  }
+})
+
+router.get('/getReq/:u_name', (req,res) => {
+  const collection = db.collection(collname);
+
+  collection.find({
+    username: req.params.u_name
+  }, {
+    projection: {
+      requests: 1
+    }
+  }).toArray((err, requestsArr) => {
+    if (!err) {
+      res.send(requestsArr)
+    }
+  })
 })
 
 router.delete('/delete', function (req, res) {
