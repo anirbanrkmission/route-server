@@ -101,13 +101,13 @@ function getFeedsOfUser(userArray, responseObj) {
   })
 }
 
-// router.get('/getFeeds/:username', (req, res) => {
-//   try {
-//     getFeedsOfUser([req.params.username], res)
-//   } catch (error) {
-//     console.log(error.message) 
-//   }
-// })
+router.get('/getFeeds/:username', (req, res) => {
+  try {
+    getFeedsOfUser([req.params.username], res)
+  } catch (error) {
+    console.log(error.message) 
+  }
+})
 
 router.get('/getAllPeople', (req, res) => {
   try {
@@ -135,15 +135,23 @@ router.get('/getFeedsOfFriends/:username', function (req, res) {
       username: req.params.username
     },
     {
-      projection: {friends: 1}
-    }).toArray(function (err, friends) {
+      projection: {requests: 1}
+    }).toArray(function (err, requestsList) {
       if (!err) {
-        // console.log(friends)
+        // res.send(requestsList)
         // res.send(friends[0].friends)
+
         var usernames = []
-        for (let friendObj of friends[0].friends) {
-          console.log(friendObj.friend.username)
-          usernames.push(friendObj.friend.username)
+        for (let reqObj of requestsList[0].requests) {
+          if (reqObj.request.requestTo.accepted) {
+            if (reqObj.request.requestTo.username == req.params.username) {
+              usernames.push(reqObj.request.requestBy.username)
+            }
+            else if (reqObj.request.requestBy.username == req.params.username) {
+              usernames.push(reqObj.request.requestTo.username)
+            }
+          }
+          
         }
 
         getFeedsOfUser(usernames, res)
